@@ -44,6 +44,9 @@ humanistic_covariates = ['days_since_last_control', 'ongoing_adherence_percentag
                         'occupation_EMPLEADO', 'occupation_ESTUDIANTE', 'occupation_INDEPENDIENTE', 'occupation_JUBILADO',
                         'occupation_PENSIONADO', 'occupation_SIN DEFINIR']
 
+last_year_adherence_query = "SELECT * FROM adherence, (SELECT MAX(survey_date) - INTERVAL '1 year' as max_date FROM adherence) last_year WHERE survey_date > last_year.max_date;" 
+
+
 class Pacientes(db.Model):
     __tablename__='patients'
     id_patient = Column(Integer, primary_key=True)
@@ -218,7 +221,7 @@ class StatsResourceAdherenceGenderAge(Resource):
         #BASIC_INFO=  pd.read_sql_query("SELECT * from patients", conn)
         basic_info_df = pd.read_sql_query('SELECT id_patient, gender, birthdate from patients', conn)
         basic_info_df['birthdate'] = pd.to_datetime(basic_info_df['birthdate'])
-        ADHERENCE = pd.read_sql_query('SELECT * from adherence', conn)
+        ADHERENCE = pd.read_sql_query(last_year_adherence_query, conn)
         adherence_df= st.get_adherence_dataset(ADHERENCE)
         select_fields = ['id_patient', 'survey_date', 'qualitative_result', 'qualitative_result_change', 'days_since_last_control', 'ongoing_adherence_percentage', 'num_reports']
         adherence_change_analysis = adherence_df[select_fields]
@@ -247,11 +250,22 @@ class StatsResourceAdherenceGenderAge(Resource):
         }
         return res
 
+class StatsResourceAdherenceLastYear(Resource):
+    def get(self):
+        st=StData()
+        ADHERENCE = pd.read_sql_query(last_year_adherence_query, conn)
+        #ADHERENCE = pd.read_sql_query('SELECT * from adherence ', conn)
+        adherence_df= st.get_adherence_dataset(ADHERENCE)
+        #datah=adh.loc[:, ['days_since_last_control', 'ongoing_adherence_percentage']]
+        adherence_df['survey_month_year'] = pd.to_datetime(adherence_df['survey_date']).dt.to_period('M')
+        adherence_last_year = adherence_df.groupby(['survey_month_year', 'id_patient']).mean().reset_index().groupby(['survey_month_year']).mean()[['ongoing_adherence_percentage']]
+        return json.loads(adherence_last_year.to_json())
  
 api.add_resource(PredictResource, '/patient/predict/<int:id_patient>')
 api.add_resource(PacientesListResource, '/patients')
 api.add_resource(PacientesResource, '/patients/<int:id_patient>')
-api.add_resource(StatsResourceAdherenceGenderAge, '/patients/stats/adherence-gender')
+api.add_resource(StatsResourceAdherenceGenderAge, '/patients/stats/adherence/gender')
+api.add_resource(StatsResourceAdherenceLastYear, '/patients/stats/adherence/last-year')
 
 
 if __name__ == '__main__':
