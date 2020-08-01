@@ -47,9 +47,18 @@ humanistic_covariates = ['days_since_last_control', 'ongoing_adherence_percentag
 PAGE_SIZE = 10;
 
 last_year_adherence_query = """
-SELECT * FROM adherence, 
+SELECT adherence.* FROM adherence, 
     (
         SELECT MAX(survey_date) - INTERVAL '1 year' AS max_date 
+        FROM adherence
+    ) last_year 
+WHERE survey_date > last_year.max_date
+"""
+
+last_2mo_adherence_query = """
+SELECT adherence.* FROM adherence, 
+    (
+        SELECT MAX(survey_date) - INTERVAL '2 months' AS max_date 
         FROM adherence
     ) last_year 
 WHERE survey_date > last_year.max_date
@@ -71,6 +80,29 @@ INNER JOIN
 ) last_adherence
 ON patients.id_patient = last_adherence.id_patient
 LIMIT %s OFFSET %s;
+"""
+
+patients_adherence_last_year = """
+SELECT last_patient_adherence.*  FROM
+(
+ SELECT MAX(survey_date) - INTERVAL '1 year' AS max_date 
+ FROM adherence
+) last_year,
+(SELECT patients.id_patient, first_name, last_name, gender, birthdate, civil_status, 
+    last_adherence.survey_date, last_adherence.adherence_result
+FROM patients
+INNER JOIN 
+(
+    SELECT DISTINCT ON (id_patient) id_patient, survey_date, 
+    CASE 
+        WHEN qualitative_result = 'si' THEN 1
+        WHEN qualitative_result = 'no' THEN 0
+    END AS adherence_result 
+    FROM adherence 
+    ORDER BY id_patient, survey_date DESC
+) last_adherence
+ON patients.id_patient = last_adherence.id_patient) last_patient_adherence
+WHERE last_patient_adherence.survey_date > last_year.max_date;
 """
 
 def predict_adherence(id_patient):
@@ -314,12 +346,30 @@ class StatsResourceAdherenceLastYear(Resource):
         adherence_df['survey_month_year'] = pd.to_datetime(adherence_df['survey_date']).dt.to_period('M')
         adherence_last_year = adherence_df.groupby(['survey_month_year', 'id_patient']).mean().reset_index().groupby(['survey_month_year']).mean()[['ongoing_adherence_percentage']]
         return json.loads(adherence_last_year.to_json())
+
+class StatsResourceAdherenceWidgets(Resource):
+    def get(self):
+        st=StData()
+        ADHERENCE = pd.read_sql_query(patients_adherence_last_year, conn)
+        adherence_counts = ADHERENCE.adherence_result.value_counts()
+        ADHERENCE_2MO = pd.read_sql_query(last_year_adherence_query, conn)
+        adherence_df= st.get_adherence_dataset(ADHERENCE_2MO)
+        adherence_last_2mo = pd.DataFrame()
+        for patient, df in adherence_df.groupby(['id_patient']):
+            adherence_last_2mo = adherence_last_2mo.append(df.iloc[-1])
+        avg_adherence = adherence_last_2mo.ongoing_adherence_percentage.mean()
+        return {
+            'count_adherent_patients': int(adherence_counts[1]),
+            'count_non_adherent_patients': int(adherence_counts[0]),
+            'avg_ongoing_adherence': round(avg_adherence, 2)
+        }
  
 api.add_resource(PredictResource, '/patient/predict/<int:id_patient>')
 api.add_resource(PacientesListResource, '/patients')
 api.add_resource(PacientesResource, '/patients/<int:id_patient>')
 api.add_resource(StatsResourceAdherenceGenderAge, '/patients/stats/adherence/gender')
 api.add_resource(StatsResourceAdherenceLastYear, '/patients/stats/adherence/last-year')
+api.add_resource(StatsResourceAdherenceWidgets, '/patients/stats/adherence/counts')
 
 
 if __name__ == '__main__':
