@@ -29,6 +29,7 @@ def merge_on_closest_date(df1, df2, date_field_df1, date_field_df2, merge_on='id
     temp_df1[date_field_df1]=pd.to_datetime(df1[date_field_df1])
     temp_df1[[f'closest_{date_field_df2}', f'days_since_{date_field_df2}']] = temp_df1.apply(
                                           find_closest_date, args=[date_field_df1, df2, date_field_df2, merge_on], axis=1)
+    temp_df1[f'closest_{date_field_df2}'] = pd.to_datetime(temp_df1[f'closest_{date_field_df2}'])
     
     result_df = pd.merge(temp_df1, df2, left_on=[merge_on, f'closest_{date_field_df2}'], right_on=[merge_on, date_field_df2])
     return result_df.drop(columns=f'closest_{date_field_df2}', axis=1)

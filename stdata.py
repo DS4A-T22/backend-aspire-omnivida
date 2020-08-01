@@ -150,6 +150,7 @@ class StData():
             print("socioeconomic_level")
             print (basic_info['socioeconomic_level'])
         else:
+            basic_info['socioeconomic_level'] = 3
             print ('No hay traducción para socioeconomic_level_codes')
     # set datatype and explicit category sorting for categorical data
         basic_info['education'] = basic_info['education'].astype(int)
