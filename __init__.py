@@ -44,6 +44,8 @@ humanistic_covariates = ['days_since_last_control', 'ongoing_adherence_percentag
                         'occupation_EMPLEADO', 'occupation_ESTUDIANTE', 'occupation_INDEPENDIENTE', 'occupation_JUBILADO',
                         'occupation_PENSIONADO', 'occupation_SIN DEFINIR']
 
+PAGE_SIZE = 10;
+
 last_year_adherence_query = """
 SELECT * FROM adherence, 
     (
@@ -67,7 +69,8 @@ INNER JOIN
     FROM adherence 
     ORDER BY id_patient, survey_date DESC
 ) last_adherence
-ON patients.id_patient = last_adherence.id_patient;
+ON patients.id_patient = last_adherence.id_patient
+LIMIT %s OFFSET %s;
 """
 
 def predict_adherence(id_patient):
@@ -235,10 +238,19 @@ class PacientesListResource(Resource):
     def get(self):
         # patient = Pacientes.query.all()
         # return patients_schema.dump(patient)
-        patients = pd.read_sql_query(patients_adherence, conn)
+        args = request.args
+        page = 1
+        if args:
+            page = int(args['page'])
+        if page < 0:
+            return {
+                'error': 400,
+                'message': 'Wrong page number'
+            }
+        patients = pd.read_sql_query(patients_adherence % (PAGE_SIZE, (page-1)*PAGE_SIZE), conn)
         patients['birthdate'] = pd.to_datetime(patients['birthdate'])
         patients['survey_date'] = pd.to_datetime(patients['survey_date'])
-        # patients['pred_adherence'] = patients['id_patient'].apply(lambda p: predict_adherence(p))
+        patients['pred_adherence'] = patients['id_patient'].apply(lambda p: predict_adherence(p))
         return json.loads(patients.to_json(force_ascii=False, orient='index', date_format='iso'))
 
 
