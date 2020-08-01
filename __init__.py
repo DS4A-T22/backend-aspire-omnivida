@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from stdata import StData
 import json
 import pickle
-from exploratory_data_analysis import omnivida_util as ovu
+import omnivida_util as ovu
 
 import pandas as pd
 import numpy as np
