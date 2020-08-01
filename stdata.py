@@ -48,39 +48,39 @@ class StData():
         adherence['qualitative_result'] = adherence['qualitative_result'].astype('float') 
         adherence['quantitative_result'] = adherence['quantitative_result'].astype('float') 
         
-        adherence_s= adherence[adherence.quantitative_result < 4]
-        adherence_n= adherence[adherence.quantitative_result == 4]
-        Todos=adherence['id_patient'].unique()                  #List of all of the ids.
-        id_list_s_not=adherence_s['id_patient'].unique() #List of id's that are not 'siempre'
-        ads = adherence[~adherence['id_patient'].isin(id_list_s_not)].copy()  #ads : Dataframe of id's that are always adherent.
-        id_list_n_not=adherence_n['id_patient'].unique() #List of id's that are not 'nunca'
-        adn = adherence[~adherence['id_patient'].isin(id_list_n_not)].copy()  #adn : Dataframe of id's that never were adherent.
+#         adherence_s= adherence[adherence.quantitative_result < 4]
+#         adherence_n= adherence[adherence.quantitative_result == 4]
+#         Todos=adherence['id_patient'].unique()                  #List of all of the ids.
+#         id_list_s_not=adherence_s['id_patient'].unique() #List of id's that are not 'siempre'
+#         ads = adherence[~adherence['id_patient'].isin(id_list_s_not)].copy()  #ads : Dataframe of id's that are always adherent.
+#         id_list_n_not=adherence_n['id_patient'].unique() #List of id's that are not 'nunca'
+#         adn = adherence[~adherence['id_patient'].isin(id_list_n_not)].copy()  #adn : Dataframe of id's that never were adherent.
 
-        Siempre_ad=ads['id_patient'].unique()            #List of id's that are 'siempre'
-        Nunca_ad=adn['id_patient'].unique()              #List of id's that are 'nunca'
+#         Siempre_ad=ads['id_patient'].unique()            #List of id's that are 'siempre'
+#         Nunca_ad=adn['id_patient'].unique()              #List of id's that are 'nunca'
 
-        Intermitentes = [x for x in Todos if x not in Siempre_ad]
-        Intermitentes = [x for x in Intermitentes if x not in Nunca_ad]
-        Intermitentes = np.array(Intermitentes)  #Intermitentes: list of id's that are 'Intermitent'
+#         Intermitentes = [x for x in Todos if x not in Siempre_ad]
+#         Intermitentes = [x for x in Intermitentes if x not in Nunca_ad]
+#         Intermitentes = np.array(Intermitentes)  #Intermitentes: list of id's that are 'Intermitent'
 
-        Todosmenosint=[x for x in Todos if x not in Intermitentes] 
-        Todosmenosint = np.array(Todosmenosint)  #List of id's that are 'Intermitent'
+#         Todosmenosint=[x for x in Todos if x not in Intermitentes] 
+#         Todosmenosint = np.array(Todosmenosint)  #List of id's that are 'Intermitent'
 
-        adi = adherence[~adherence['id_patient'].isin(Todosmenosint)].copy()  #adi: Dataframe of id's that has intermitent adherence.
-        adi['quantitative_result'] = adi['quantitative_result'].astype('int64')
-        middle_group_scores = adi.groupby('id_patient').quantitative_result.mean().reset_index()  #Sortearlo por el promedio.
-        intermediate_adherence_thresholds = adi.groupby('id_patient').quantitative_result.mean().quantile([0.25, 0.75])
-        scores_t75 = intermediate_adherence_thresholds[0.75]
-        scores_t25 = intermediate_adherence_thresholds[0.25]
-        middle_group_scores["category"] = np.where(middle_group_scores['quantitative_result'] > scores_t75, 'A-', 
-        (np.where(middle_group_scores['quantitative_result'] < scores_t25, 'N+', 'M')))
-        adi = adi.merge(middle_group_scores[['id_patient', 'category']], how='left')
-        ads['category']='A'
-        adn['category']='N'
-        adherence = pd.concat([ads, adi, adn], ignore_index=True).sort_values(by=['id_patient', 'survey_date']).reset_index(drop=True)
+#         adi = adherence[~adherence['id_patient'].isin(Todosmenosint)].copy()  #adi: Dataframe of id's that has intermitent adherence.
+#         adi['quantitative_result'] = adi['quantitative_result'].astype('int64')
+#         middle_group_scores = adi.groupby('id_patient').quantitative_result.mean().reset_index()  #Sortearlo por el promedio.
+#         intermediate_adherence_thresholds = adi.groupby('id_patient').quantitative_result.mean().quantile([0.25, 0.75])
+#         scores_t75 = intermediate_adherence_thresholds[0.75]
+#         scores_t25 = intermediate_adherence_thresholds[0.25]
+#         middle_group_scores["category"] = np.where(middle_group_scores['quantitative_result'] > scores_t75, 'A-', 
+#         (np.where(middle_group_scores['quantitative_result'] < scores_t25, 'N+', 'M')))
+#         adi = adi.merge(middle_group_scores[['id_patient', 'category']], how='left')
+#         ads['category']='A'
+#         adn['category']='N'
+#         adherence = pd.concat([ads, adi, adn], ignore_index=True).sort_values(by=['id_patient', 'survey_date']).reset_index(drop=True)
     
-        adherence['category'] = adherence['category'].astype('category')
-        adherence['category'].cat.reorder_categories(['N', 'N+', 'M', 'A-', 'A'], ordered=True, inplace=True)
+#         adherence['category'] = adherence['category'].astype('category')
+#         adherence['category'].cat.reorder_categories(['N', 'N+', 'M', 'A-', 'A'], ordered=True, inplace=True)
         
         adherence_change = pd.DataFrame()
         for paciente, df in adherence.groupby('id_patient'):
@@ -121,17 +121,18 @@ class StData():
         'B': 4,
         'C': 5
         }
-        gender_codes={
-            'M':0,
-            'F':1
-        }
+        
+#         gender_codes={
+#             'M':0,
+#             'F':1
+#         }
 
-        if basic_info['gender'][0] in gender_codes:
-            a=basic_info['gender'][0]
-            basic_info.at[0,'gender'] =gender_codes[a]
-            print (basic_info['gender'])
-        else:
-            print ('No hay traducción para el género')
+#         if basic_info['gender'][0] in gender_codes:
+#             a=basic_info['gender'][0]
+#             basic_info.at[0,'gender'] =gender_codes[a]
+#             print (basic_info['gender'])
+#         else:
+#             print ('No hay traducción para el género')
 
         if basic_info['education'][0] in education_codes:
             a=basic_info['education'][0]
@@ -149,12 +150,23 @@ class StData():
         else:
             print ('No hay traducción para socioeconomic_level_codes')
     # set datatype and explicit category sorting for categorical data
+        basic_info['education'] = basic_info['education'].astype(int)
+        basic_info['socioeconomic_level'] = basic_info['socioeconomic_level'].astype(int)
+        basic_info['gender'] = basic_info['civil_status'].astype('category')
+        basic_info['gender'] = basic_info['gender'].cat.set_categories(['M', 'F'])
         basic_info['civil_status'] = basic_info['civil_status'].astype('category')
-        basic_info['zone'] = basic_info['zone'].astype('category')
+        basic_info['civil_status'] = basic_info['civil_status'].cat.set_categories(['CASADO (A)', \
+                                        'SEPARADO (A)', 'SIN DEFINIR', 'SOLTERO (A)', 'UNIÓN LIBRE', \
+                                        'VIUDO (A)'])
+#         basic_info['zone'] = basic_info['zone'].astype('category')
         basic_info['occupation'] = basic_info['occupation'].astype('category')
-        basic_info['social_security_regime'] = basic_info['social_security_regime'].astype('category')
-        basic_info['social_security_affiliation_type'] = basic_info['social_security_affiliation_type'].astype('category')
-        basic_info['employment_type'] = basic_info['employment_type'].astype('category')
+        basic_info['occupation'] = basic_info['occupation'].cat.set_categories(['AMA DE CASA', \
+                                        'DESEMPLEADO', 'EMPLEADO', 'ESTUDIANTE', 'INDEPENDIENTE', \
+                                        'JUBILADO', 'PENSIONADO', 'SIN DEFINIR'])
+        
+#         basic_info['social_security_regime'] = basic_info['social_security_regime'].astype('category')
+#         basic_info['social_security_affiliation_type'] = basic_info['social_security_affiliation_type'].astype('category')
+#         basic_info['employment_type'] = basic_info['employment_type'].astype('category')
         basic_info['birthdate'] = pd.to_datetime(basic_info['birthdate'])
         print("creó información básica")
         return basic_info
