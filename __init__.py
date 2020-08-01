@@ -88,6 +88,11 @@ class PredictResource(Resource):
         ADHERENCE = pd.read_sql_query('SELECT * from adherence where id_patient='+str(id_patient), conn)
         #ADHERENCE = pd.read_sql_query('SELECT * from adherence ', conn)
         adh= st.get_adherence_dataset(ADHERENCE)
+        if adh.empty:
+            return {
+                'error': 500,
+                'message': 'There is no adherence records available for this patient'
+            }
         datah=adh.loc[:, ['days_since_last_control', 'ongoing_adherence_percentage']]
 
         FAMILY_RECORD = pd.read_sql_query('SELECT * from family_records where id_patient='+str(id_patient), conn)
@@ -150,35 +155,45 @@ class PredictResource(Resource):
         bi_fr_adherence['family_respiratory_related_diagnosis'] = bi_fr_adherence['family_respiratory_related_diagnosis'].fillna(0)
         bi_fr_adherence['family_non_respiratory_related_diagnosis'] = bi_fr_adherence['family_non_respiratory_related_diagnosis'].fillna(0)
 
-        pivoted_life_quality = well_being_df.pivot(index='creation_date', columns='dimension', values='score')
-        pivoted_life_quality.columns = pivoted_life_quality.columns.categories
-        pivoted_life_quality.reset_index(inplace=True)
-        pivoted_life_quality['id_patient'] = id_patient
-        cols = [list(pivoted_life_quality.columns)[-1]] + list(pivoted_life_quality.columns)[:-1]
-        pivoted_life_quality = pivoted_life_quality[cols]
-        pivoted_life_quality
-
-        pivoted_life_quality.columns = ['id_patient', 'creation_date', 'personal_environment', 'psychological_health', 'interpersonal_relationships', 'physical_health']
-        pivoted_life_quality['wb_score'] = (pivoted_life_quality['personal_environment'] + \
-                pivoted_life_quality['psychological_health'] + \
-                pivoted_life_quality['interpersonal_relationships'] + \
-                pivoted_life_quality['physical_health']) / 4.
-
-        adherence_change_life_quality = ovu.merge_on_closest_date(df1=adherence_change_analysis, df2=pivoted_life_quality, date_field_df1='survey_date', date_field_df2='creation_date', merge_on='id_patient')
-        adherence_change_life_quality.rename(columns={'days_since_creation_date': 'days_since_last_well_being_survey'}, inplace=True)
-
-        aclq_timely = adherence_change_life_quality[adherence_change_life_quality.days_since_last_well_being_survey <= period]
-        # aclq_late = adherence_change_life_quality[adherence_change_life_quality.days_since_last_well_being_survey > period]
-
         aclq_timely_summary = pd.DataFrame()
-        for survey_date, df in aclq_timely.groupby('survey_date'):
-            aclq_timely_summary = aclq_timely_summary.append({
-                'id_patient': id_patient,
-                'survey_date': survey_date,
-                'num_wb_reports_last_30_days': df.shape[0],
-                'wb_score': df.iloc[-1]['wb_score'],
-                'days_since_last_wb_survey': df.iloc[-1]['days_since_last_well_being_survey']
-            }, ignore_index=True)
+        if not family_records_df.empty:
+            pivoted_life_quality = well_being_df.pivot(index='creation_date', columns='dimension', values='score')
+            pivoted_life_quality.columns = pivoted_life_quality.columns.categories
+            pivoted_life_quality.reset_index(inplace=True)
+            pivoted_life_quality['id_patient'] = id_patient
+            cols = [list(pivoted_life_quality.columns)[-1]] + list(pivoted_life_quality.columns)[:-1]
+            pivoted_life_quality = pivoted_life_quality[cols]
+            # print(pivoted_life_quality)
+
+            pivoted_life_quality.columns = ['id_patient', 'creation_date', 'personal_environment', 'psychological_health', 'interpersonal_relationships', 'physical_health']
+            pivoted_life_quality['wb_score'] = (pivoted_life_quality['personal_environment'] + \
+                    pivoted_life_quality['psychological_health'] + \
+                    pivoted_life_quality['interpersonal_relationships'] + \
+                    pivoted_life_quality['physical_health']) / 4.
+
+            adherence_change_life_quality = ovu.merge_on_closest_date(df1=adherence_change_analysis, df2=pivoted_life_quality, date_field_df1='survey_date', date_field_df2='creation_date', merge_on='id_patient')
+            adherence_change_life_quality.rename(columns={'days_since_creation_date': 'days_since_last_well_being_survey'}, inplace=True)
+
+            aclq_timely = adherence_change_life_quality[adherence_change_life_quality.days_since_last_well_being_survey <= period]
+            # aclq_late = adherence_change_life_quality[adherence_change_life_quality.days_since_last_well_being_survey > period]
+
+            for survey_date, df in aclq_timely.groupby('survey_date'):
+                aclq_timely_summary = aclq_timely_summary.append({
+                    'id_patient': id_patient,
+                    'survey_date': survey_date,
+                    'num_wb_reports_last_30_days': df.shape[0],
+                    'wb_score': df.iloc[-1]['wb_score'],
+                    'days_since_last_wb_survey': df.iloc[-1]['days_since_last_well_being_survey']
+                }, ignore_index=True)
+        else:
+            for survey_date, df in bi_fr_adherence.groupby('survey_date'):
+                aclq_timely_summary = aclq_timely_summary.append({
+                    'id_patient': id_patient,
+                    'survey_date': survey_date,
+                    'num_wb_reports_last_30_days': np.nan,
+                    'wb_score': np.nan,
+                    'days_since_last_wb_survey': np.nan
+                }, ignore_index=True)
 
         # Merge Adherence, Basic info data, Family records and Well-being data
 

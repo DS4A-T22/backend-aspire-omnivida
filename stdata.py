@@ -140,6 +140,7 @@ class StData():
             print("educación")
             print (basic_info['education'])
         else:
+            basic_info['education'] = 3
             print ('No hay traducción para la educación')
 
         if basic_info['socioeconomic_level'][0] in socioeconomic_level_codes:
