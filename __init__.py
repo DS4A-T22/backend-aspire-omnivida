@@ -44,7 +44,31 @@ humanistic_covariates = ['days_since_last_control', 'ongoing_adherence_percentag
                         'occupation_EMPLEADO', 'occupation_ESTUDIANTE', 'occupation_INDEPENDIENTE', 'occupation_JUBILADO',
                         'occupation_PENSIONADO', 'occupation_SIN DEFINIR']
 
-last_year_adherence_query = "SELECT * FROM adherence, (SELECT MAX(survey_date) - INTERVAL '1 year' as max_date FROM adherence) last_year WHERE survey_date > last_year.max_date;" 
+last_year_adherence_query = """
+SELECT * FROM adherence, 
+    (
+        SELECT MAX(survey_date) - INTERVAL '1 year' AS max_date 
+        FROM adherence
+    ) last_year 
+WHERE survey_date > last_year.max_date
+"""
+
+patients_adherence = """
+SELECT patients.id_patient, first_name, last_name, gender, birthdate, civil_status, 
+    last_adherence.survey_date, last_adherence.adherence_result
+FROM patients
+INNER JOIN 
+(
+    SELECT DISTINCT ON (id_patient) id_patient, survey_date, 
+    CASE 
+        WHEN qualitative_result = 'si' THEN 1
+        WHEN qualitative_result = 'no' THEN 0
+    END AS adherence_result 
+    FROM adherence 
+    ORDER BY id_patient, survey_date DESC
+) last_adherence
+ON patients.id_patient = last_adherence.id_patient;
+"""
 
 
 class Pacientes(db.Model):
@@ -74,8 +98,12 @@ patients_schema = PacientesSchema(many=True)
 
 class PacientesListResource(Resource):
     def get(self):
-        patient = Pacientes.query.all()
-        return patients_schema.dump(patient)
+        # patient = Pacientes.query.all()
+        # return patients_schema.dump(patient)
+        patients = pd.read_sql_query(patients_adherence, conn)
+        patients['birthdate'] = pd.to_datetime(patients['birthdate'])
+        patients['survey_date'] = pd.to_datetime(patients['survey_date'])
+        return json.loads(patients.to_json(force_ascii=False, orient='index', date_format='iso'))
 
 
 class PacientesResource(Resource):
