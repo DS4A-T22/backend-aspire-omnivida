@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 import sys
 import os
+from flask_cors import CORS
 sys.path.append("../")
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
@@ -25,11 +27,12 @@ db_connect = create_engine(
 conn = db_connect.connect() 
 
 app = Flask(__name__)
+CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:nxZFTdAzjL0TMwHX8TBT@ds4a-t22-omnivida.ch3i6mn5ftrs.sa-east-1.rds.amazonaws.com/omnivida'
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 api = Api(app)
-humanistic_model = pickle.load(open('./models/human_xgboost.pkl','rb'))
+humanistic_model = pickle.load(open('models/human_xgboost.pkl','rb'))
 respiratory_related_diagnosis = ['ASMA MIXTA', 'ASMA NO ALERGICA', 'ASMA, NO ESPECIFICADA', 
                                         'CARCINOMA IN SITU DEL BRONQUIO Y DEL PULMON', 'ENFERMEDAD PULMONAR OBSTRUCTIVA CRONICA, NO ESPECIFICADA']
 period = 30
