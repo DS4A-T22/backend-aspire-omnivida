@@ -212,11 +212,46 @@ class PredictResource(Resource):
         bi_fr_wb_adherence_modelable = bi_fr_wb_adherence_modelable[humanistic_covariates]
         return bi_fr_wb_adherence_modelable
 
+class StatsResourceAdherenceGenderAge(Resource):
+    def get(self):
+        st=StData()
+        #BASIC_INFO=  pd.read_sql_query("SELECT * from patients", conn)
+        basic_info_df = pd.read_sql_query('SELECT id_patient, gender, birthdate from patients', conn)
+        basic_info_df['birthdate'] = pd.to_datetime(basic_info_df['birthdate'])
+        ADHERENCE = pd.read_sql_query('SELECT * from adherence', conn)
+        adherence_df= st.get_adherence_dataset(ADHERENCE)
+        select_fields = ['id_patient', 'survey_date', 'qualitative_result', 'qualitative_result_change', 'days_since_last_control', 'ongoing_adherence_percentage', 'num_reports']
+        adherence_change_analysis = adherence_df[select_fields]
+
+        bi_adherence = adherence_change_analysis.merge(basic_info_df, how='left', on='id_patient')
+        bi_adherence['age_at_survey_date'] = (np.ceil((bi_adherence['survey_date'] - bi_adherence['birthdate']) / np.timedelta64(1, 'Y'))).astype(int)
+        bi_adherence['age_group'] = bi_adherence['age_at_survey_date'].apply(lambda x: np.ceil(x/5.))
+        adher_gender_age = bi_adherence.groupby(['age_group', 'gender']).mean()[['ongoing_adherence_percentage']].reset_index()
+        age_groups = list(adher_gender_age.age_group.unique())
+        female_adherence = []
+        male_adherence = []
+        for group in age_groups:
+            if not adher_gender_age[(adher_gender_age['gender']=='F') & (adher_gender_age['age_group']==group)].ongoing_adherence_percentage.empty:
+                female_adherence.append(adher_gender_age[(adher_gender_age['gender']=='F') & (adher_gender_age['age_group']==group)].ongoing_adherence_percentage.values[0])
+            else:
+                female_adherence.append(-1.0)
+            if not adher_gender_age[(adher_gender_age['gender']=='M') & (adher_gender_age['age_group']==group)].ongoing_adherence_percentage.empty:
+                male_adherence.append(adher_gender_age[(adher_gender_age['gender']=='M') & (adher_gender_age['age_group']==group)].ongoing_adherence_percentage.values[0])
+            else:
+                male_adherence.append(-1.0)
+        age_groups_str = [f'{int(group*5-5)}-{int(group*5)}' for group in age_groups]
+        res = {
+            'age_groups': age_groups_str,
+            'female_adherence': female_adherence,
+            'male_adherence': male_adherence
+        }
+        return res
 
  
 api.add_resource(PredictResource, '/patient/predict/<int:id_patient>')
 api.add_resource(PacientesListResource, '/patients')
 api.add_resource(PacientesResource, '/patients/<int:id_patient>')
+api.add_resource(StatsResourceAdherenceGenderAge, '/patients/stats/adherence-gender')
 
 
 if __name__ == '__main__':
