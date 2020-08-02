@@ -82,6 +82,25 @@ ON patients.id_patient = last_adherence.id_patient
 LIMIT %s OFFSET %s;
 """
 
+high_risk_patients_adherence = """
+SELECT patients.id_patient, first_name, last_name, gender, birthdate, civil_status, 
+    last_adherence.survey_date, last_adherence.adherence_result
+FROM patients
+INNER JOIN 
+(
+    SELECT DISTINCT ON (id_patient) id_patient, survey_date, 
+    CASE 
+        WHEN qualitative_result = 'si' THEN 1
+        WHEN qualitative_result = 'no' THEN 0
+    END AS adherence_result 
+    FROM adherence 
+    ORDER BY id_patient, survey_date DESC
+) last_adherence
+ON patients.id_patient = last_adherence.id_patient
+ORDER BY last_adherence.survey_date ASC
+LIMIT %s OFFSET %s;
+"""
+
 patients_adherence_last_year = """
 SELECT last_patient_adherence.*  FROM
 (
@@ -285,6 +304,24 @@ class PacientesListResource(Resource):
         patients['pred_adherence'] = patients['id_patient'].apply(lambda p: predict_adherence(p))
         return json.loads(patients.to_json(force_ascii=False, orient='index', date_format='iso'))
 
+class HighRiskPacientesListResource(Resource):
+    def get(self):
+        # patient = Pacientes.query.all()
+        # return patients_schema.dump(patient)
+        args = request.args
+        page = 1
+        if args:
+            page = int(args['page'])
+        if page < 0:
+            return {
+                'error': 400,
+                'message': 'Wrong page number'
+            }
+        patients = pd.read_sql_query(high_risk_patients_adherence % (PAGE_SIZE, (page-1)*PAGE_SIZE), conn)
+        patients['birthdate'] = pd.to_datetime(patients['birthdate'])
+        patients['survey_date'] = pd.to_datetime(patients['survey_date'])
+        patients['pred_adherence'] = patients['id_patient'].apply(lambda p: predict_adherence(p))
+        return json.loads(patients.to_json(force_ascii=False, orient='index', date_format='iso'))
 
 class PacientesResource(Resource):
     def get(self, id_patient):
@@ -366,6 +403,7 @@ class StatsResourceAdherenceWidgets(Resource):
  
 api.add_resource(PredictResource, '/patient/predict/<int:id_patient>')
 api.add_resource(PacientesListResource, '/patients')
+api.add_resource(HighRiskPacientesListResource, '/patients/high-risk')
 api.add_resource(PacientesResource, '/patients/<int:id_patient>')
 api.add_resource(StatsResourceAdherenceGenderAge, '/patients/stats/adherence/gender')
 api.add_resource(StatsResourceAdherenceLastYear, '/patients/stats/adherence/last-year')
