@@ -1,0 +1,13 @@
+# ASPIRE API
+
+This repository contains the implementation of an API that exposes the funcitionalities of the ASPIRE platform through HTTP. The table below shows a specification of the enpoints offered through this API.
+
+| Resource                            | Method | Description                                                                                                                                                            | Example                                                     |
+|-------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| /patients[?page]                    | GET    | Returns the (paginated) list of patients that are currently registered in the platform                                                                                 | https://3.14.82.151:5000/patients                           |
+| /patients/{id_patient}              | GET    | Returns the details of the patient registered under the provided ID                                                                                                    | https://3.14.82.151:5000/patients/525540                    |
+| /patients/high-risk                 | GET    | Returns the (paginated) list of patients order by the date of their last adherence control                                                                             | https://3.14.82.151:5000/patients/high-risk                 |
+| /patients/stats/adherence/gender    | GET    | Returns the stats regarding the average adherence per gender and per age group (0-5, 5-10, 10-15, etc.)                                                                | https://3.14.82.151:5000/patients/stats/adherence/gender    |
+| /patients/stats/adherence/last-year | GET    | Returns the stats regarding the average level of adherence during the last 12 months                                                                                   | https://3.14.82.151:5000/patients/stats/adherence/last-year |
+| /patients/stats/adherence/counts    | GET    | Returns the count of adherent/non-adherent patients for the last 12 months period, along with the average ongoing adherence percentage for the last 2 months period.   | https://3.14.82.151:5000/patients/stats/adherence/counts    |
+| /patient/predict/{id_patient}       | GET    | Returns the predicted adherence for the patient registered under the provide id, according to the implemented ML model                                                 | https://3.14.82.151:5000/patient/predict/525540             |
