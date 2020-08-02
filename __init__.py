@@ -20,15 +20,16 @@ import omnivida_util as ovu
 import pandas as pd
 import numpy as np
 
+DB_PASSWD = os.getenv('DB_PASSWD')
 db_connect = create_engine(    
-        "postgresql://postgres:nxZFTdAzjL0TMwHX8TBT@ds4a-t22-omnivida.ch3i6mn5ftrs.sa-east-1.rds.amazonaws.com/omnivida",
+        f"postgresql://postgres:{DB_PASSWD}@ds4a-t22-omnivida.ch3i6mn5ftrs.sa-east-1.rds.amazonaws.com/omnivida",
         isolation_level="READ UNCOMMITTED") #La ruta depende de donde tengas almacenada la base de datos
 
 conn = db_connect.connect() 
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:nxZFTdAzjL0TMwHX8TBT@ds4a-t22-omnivida.ch3i6mn5ftrs.sa-east-1.rds.amazonaws.com/omnivida'
+app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://postgres:{DB_PASSWD}@ds4a-t22-omnivida.ch3i6mn5ftrs.sa-east-1.rds.amazonaws.com/omnivida"
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 api = Api(app)
