@@ -413,7 +413,8 @@ class RootResource(Resource):
                 'stats_adherence_last_year': 'https://www.aspire-app.tk:5000/patients/last-year',
                 'stats_adherence_counts': 'https://www.aspire-app.tk:5000/patients/counts',
                 'adherence_prediction': 'https://www.aspire-app.tk:5000/patient/predict/{id_patient}'
-            }
+            },
+            'source_code': 'https://github.com/DS4A-T22/backend-aspire-omnivida'  
         }
  
 api.add_resource(RootResource, '/')
