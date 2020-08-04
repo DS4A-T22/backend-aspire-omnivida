@@ -401,7 +401,22 @@ class StatsResourceAdherenceWidgets(Resource):
             'count_non_adherent_patients': int(adherence_counts[0]),
             'avg_ongoing_adherence': round(avg_adherence, 2)
         }
+    
+class RootResource(Resource):
+    def get(self):
+        return {
+            'aspire_api_endpoints': {
+                'patients': 'https://www.aspire-app.tk:5000/patients',
+                'patient_details': 'https://www.aspire-app.tk:5000/patients/{id_patient}',
+                'high_risk_patients': 'https://www.aspire-app.tk:5000/patients/high-risk',
+                'stats_adherence_gender': 'https://www.aspire-app.tk:5000/patients/stats/adherence/gender',
+                'stats_adherence_last_year': 'https://www.aspire-app.tk:5000/patients/last-year',
+                'stats_adherence_counts': 'https://www.aspire-app.tk:5000/patients/counts',
+                'adherence_prediction': 'https://www.aspire-app.tk:5000/patient/predict/{id_patient}'
+            }
+        }
  
+api.add_resource(RootResource, '/')
 api.add_resource(PredictResource, '/patient/predict/<int:id_patient>')
 api.add_resource(PacientesListResource, '/patients')
 api.add_resource(HighRiskPacientesListResource, '/patients/high-risk')
